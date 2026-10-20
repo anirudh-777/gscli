@@ -79,7 +79,14 @@ export function matchSite(wanted: string, available: string[]): string | undefin
   const host = url.hostname.toLowerCase();
   const bareHost = host.replace(/^www\./, '');
   const isBareDomain = !/^https?:\/\//i.test(value);
-  const domain = available.find((s) => s === `sc-domain:${host}` || s === `sc-domain:${bareHost}`);
+  // Domain properties cover every subdomain; the most specific one wins.
+  const domain = available
+    .filter((s) => s.startsWith('sc-domain:'))
+    .filter((s) => {
+      const d = s.slice('sc-domain:'.length);
+      return host === d || host.endsWith(`.${d}`);
+    })
+    .sort((a, b) => b.length - a.length)[0];
 
   // A bare domain means the whole site, so the domain property wins when there is one.
   if (isBareDomain && domain) return domain;

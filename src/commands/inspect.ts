@@ -1,12 +1,15 @@
-import { readFile } from 'node:fs/promises';
+import { listSites, matchSite } from '../api.ts';
 import type { SearchConsoleClient } from '../client.ts';
 import { parseLimit, str, type Command } from '../command.ts';
-import { CliError, usageError } from '../errors.ts';
+import { CliError } from '../errors.ts';
 import type { Column, Row } from '../output.ts';
+import { collectUrls, mapLimit, normalizeUrl, openInBrowser, URL_SOURCE_HELP, URL_SOURCE_OPTIONS } from '../urls.ts';
 
 /** Sitemaps can list thousands of URLs; inspection quota is 2,000 per property per day. */
 const DEFAULT_URL_LIMIT = 50;
 const MAX_CONCURRENCY = 10;
+/** --open launches one browser tab per URL; more than this is a mistake, not a workflow. */
+const MAX_OPEN = 10;
 
 interface InspectionResult {
   inspectionResultLink?: string;
@@ -31,32 +34,41 @@ interface InspectionResult {
 
 export const inspect: Command = {
   name: 'inspect',
-  summary: 'Indexing status of URLs: indexed or not, why, canonical, last crawl',
+  summary: 'Indexing status of URLs, and a one-click route to "Request indexing"',
   usage: 'gscli inspect <url...> [options]',
   help: `Runs the URL Inspection API (Google's indexed version, not a live test) for each URL.
 
 verdict is PASS (indexed), NEUTRAL (excluded, e.g. noindex or duplicate) or FAIL (error).
 coverageState gives the reason, e.g. "Crawled - currently not indexed".
 canonicalMismatch is true when Google picked a different canonical than the page declares.
+link opens the URL in Search Console's URL Inspection tool.
 A URL that fails to inspect gets an error field; the command still exits 0.
 
+Without --site, each URL is matched to the property that contains it.
+
+Requesting a recrawl: Google offers no API for the "Request indexing" button (its Indexing API
+is limited to job posting and livestream pages). --open takes you straight to that button.
+For Bing, Yandex and other IndexNow engines, use \`gscli indexnow submit\`.
+
 Options:
-      --file <path>          Read URLs from a file, one per line ("-" for stdin).
-      --sitemap <url>        Inspect the URLs listed in a sitemap (follows one level of sitemap index).
+${URL_SOURCE_HELP}
   -n, --limit <n|all>        Maximum URLs from --file or --sitemap. Default: ${DEFAULT_URL_LIMIT}.
                              Quota: 2,000 inspections per property per day, 600 per minute.
+      --open                 Open each URL's inspection page in the browser (at most ${MAX_OPEN}),
+                             ready for "Request indexing".
       --concurrency <n>      Parallel requests. Default: 4, maximum ${MAX_CONCURRENCY}.
       --language <code>      Language for issue messages, e.g. en-US. Default: en-US.
       --raw                  Return Google's full inspection result for each URL.
 
 Examples:
   gscli inspect https://example.com/pricing
+  gscli inspect https://example.com/pricing --open   # then click "Request indexing"
   gscli inspect --sitemap https://example.com/sitemap.xml -n 200 --format csv > index-status.csv
   gscli query -d page --format jsonl | jq -r .page | head -20 | gscli inspect --file -`,
   options: {
-    file: { type: 'string' },
-    sitemap: { type: 'string' },
+    ...URL_SOURCE_OPTIONS,
     limit: { type: 'string', short: 'n' },
+    open: { type: 'boolean' },
     concurrency: { type: 'string' },
     language: { type: 'string' },
     raw: { type: 'boolean' },
@@ -67,51 +79,62 @@ Examples:
     const limit = parseLimit(values.limit, DEFAULT_URL_LIMIT);
     const concurrency = Math.min(MAX_CONCURRENCY, Math.max(1, Number(str(values.concurrency) ?? 4) || 4));
     const languageCode = str(values.language) ?? 'en-US';
+    const { urls, source, sitemapUrlCount } = await collectUrls(positionals, values, limit);
 
-    let urls = [...positionals];
-    let source = 'arguments';
-    const file = str(values.file);
-    const sitemap = str(values.sitemap);
-    if (file) {
-      const text = file === '-' ? await readStdin() : await readFile(file, 'utf8');
-      urls.push(...text.split(/\r?\n/).map((l) => l.trim()).filter((l) => l && !l.startsWith('#')).slice(0, limit));
-      source = file === '-' ? 'stdin' : file;
-    }
-    let sitemapTotal: number | undefined;
-    if (sitemap) {
-      const fromSitemap = await sitemapUrls(sitemap);
-      sitemapTotal = fromSitemap.length;
-      urls.push(...fromSitemap.slice(0, limit));
-      source = sitemap;
-    }
-    urls = [...new Set(urls)];
-    if (urls.length === 0) throw usageError('No URLs to inspect.', 'Pass URLs as arguments, or use --file or --sitemap.');
-    for (const url of urls) {
-      if (!/^https?:\/\//i.test(url)) throw usageError(`"${url}" is not an absolute http(s) URL.`);
+    let siteFor: (url: string) => string | undefined;
+    let siteLabel: string;
+    if (ctx.siteRequested) {
+      const site = await ctx.site(client);
+      siteFor = () => site;
+      siteLabel = site;
+    } else {
+      const available = (await listSites(client))
+        .filter((s) => s.permissionLevel !== 'siteUnverifiedUser')
+        .map((s) => s.siteUrl);
+      siteFor = (url) => matchSite(url, available);
+      siteLabel = 'per URL';
     }
 
-    const site = await ctx.site(client);
-    const rows = await mapLimit(urls, concurrency, (url) => inspectOne(client, site, url, languageCode, Boolean(values.raw)));
+    const rows = await mapLimit(urls, concurrency, async (url) => {
+      const site = siteFor(url);
+      if (!site) return { url, error: 'No accessible Search Console property contains this URL.' };
+      const row = await inspectOne(client, site, url, languageCode, Boolean(values.raw));
+      return ctx.siteRequested ? row : { url, site, ...row };
+    });
+
+    if (values.open) {
+      for (const row of rows.filter((r) => r.link).slice(0, MAX_OPEN)) {
+        row.opened = await openInBrowser(String(row.link));
+      }
+    }
     const failed = rows.filter((r) => r.error).length;
 
-    const columns: Column[] = values.raw
-      ? [{ key: 'url' }, { key: 'error' }]
-      : [
-          { key: 'url' },
-          { key: 'verdict' },
-          { key: 'coverageState', label: 'coverage' },
-          { key: 'lastCrawlTime', label: 'lastCrawl' },
-          { key: 'canonicalMismatch', label: 'canonical≠' },
-          { key: 'error' },
-        ];
+    const columns: Column[] = [
+      { key: 'url' },
+      ...(values.raw
+        ? []
+        : [
+            { key: 'verdict' },
+            { key: 'coverageState', label: 'coverage' },
+            { key: 'lastCrawlTime', label: 'lastCrawl' },
+            { key: 'canonicalMismatch', label: 'canonical≠' },
+          ]),
+      ...(values.open ? [{ key: 'opened' }] : []),
+      { key: 'error' },
+    ];
     return {
       meta: {
-        site,
+        site: siteLabel,
         source,
-        sitemapUrlCount: sitemapTotal,
+        sitemapUrlCount,
         inspected: rows.length,
         failed,
         indexed: values.raw ? undefined : rows.filter((r) => r.verdict === 'PASS').length,
+        opened: values.open ? rows.filter((r) => r.opened).length : undefined,
+        notOpened:
+          values.open && rows.filter((r) => r.link).length > MAX_OPEN
+            ? `--open opens at most ${MAX_OPEN} pages; the rest have a link field.`
+            : undefined,
       },
       rows,
       columns,
@@ -132,7 +155,7 @@ async function inspectOne(
       body: { inspectionUrl: url, siteUrl, languageCode },
     });
     const result = res.inspectionResult ?? {};
-    return raw ? { url, ...result } : flattenInspection(url, result);
+    return raw ? { url, link: result.inspectionResultLink, ...result } : flattenInspection(url, result);
   } catch (err) {
     // Credential and quota problems affect every URL, so stop instead of reporting each one.
     if (err instanceof CliError && (err.code === 'auth' || err.code === 'quota')) throw err;
@@ -166,66 +189,4 @@ export function flattenInspection(url: string, result: InspectionResult): Row {
     richResultIssues: issues.length ? issues.map((i) => `${i.severity}: ${i.issueMessage}`) : undefined,
     link: result.inspectionResultLink,
   };
-}
-
-/** `https://a.com` and `https://a.com/` are the same URL; URL parsing makes them equal. */
-function normalizeUrl(url: string): string {
-  try {
-    return new URL(url).href;
-  } catch {
-    return url;
-  }
-}
-
-const MAX_CHILD_SITEMAPS = 50;
-
-export async function sitemapUrls(url: string, depth = 0): Promise<string[]> {
-  const xml = await fetchText(url);
-  const locs = extractLocs(xml);
-  if (!/<sitemapindex[\s>]/i.test(xml)) return locs;
-  if (depth > 0) return [];
-  const urls: string[] = [];
-  for (const child of locs.slice(0, MAX_CHILD_SITEMAPS)) urls.push(...(await sitemapUrls(child, depth + 1)));
-  return urls;
-}
-
-export function extractLocs(xml: string): string[] {
-  return [...xml.matchAll(/<loc>\s*(?:<!\[CDATA\[)?\s*(.*?)\s*(?:\]\]>)?\s*<\/loc>/gis)].map((m) =>
-    m[1]!.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'"),
-  );
-}
-
-async function fetchText(url: string): Promise<string> {
-  let res: Response;
-  try {
-    res = await fetch(url, { headers: { 'user-agent': 'gscli' }, signal: AbortSignal.timeout(30_000) });
-  } catch (err) {
-    throw new CliError('error', `Could not fetch sitemap ${url}: ${err instanceof Error ? err.message : String(err)}`);
-  }
-  if (!res.ok) throw new CliError('error', `Fetching sitemap ${url} returned HTTP ${res.status}.`);
-  if (url.endsWith('.gz')) {
-    const stream = res.body!.pipeThrough(new DecompressionStream('gzip'));
-    return new Response(stream).text();
-  }
-  return res.text();
-}
-
-async function readStdin(): Promise<string> {
-  if (process.stdin.isTTY) throw usageError('--file - reads URLs from stdin, but nothing was piped in.');
-  const chunks: Buffer[] = [];
-  for await (const chunk of process.stdin) chunks.push(chunk as Buffer);
-  return Buffer.concat(chunks).toString('utf8');
-}
-
-async function mapLimit<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
-  const results = new Array<R>(items.length);
-  let next = 0;
-  const worker = async () => {
-    while (next < items.length) {
-      const i = next++;
-      results[i] = await fn(items[i]!);
-    }
-  };
-  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
-  return results;
 }

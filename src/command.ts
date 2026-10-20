@@ -13,6 +13,8 @@ export interface Context {
   client(options?: { write?: boolean }): SearchConsoleClient;
   /** The property to act on, from --site, GSC_SITE, or the only accessible property. */
   site(client: SearchConsoleClient): Promise<string>;
+  /** Whether --site or GSC_SITE named a property. */
+  siteRequested: boolean;
 }
 
 export interface Command {

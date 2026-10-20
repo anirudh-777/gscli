@@ -59,7 +59,8 @@ then gcloud's application-default credentials.
 | `gscli query` | Search Analytics by query, page, country, device, search appearance, date or hour |
 | `gscli compare` | Row-by-row period comparison with new / lost / up / down status |
 | `gscli opportunities` | Rows in positions 4–20 ranked by clicks they could gain |
-| `gscli inspect` | URL Inspection: indexed or not, why, canonical, last crawl. URLs, a file, stdin or a sitemap |
+| `gscli inspect` | URL Inspection: indexed or not, why, canonical, last crawl. `--open` jumps to "Request indexing" |
+| `gscli indexnow` | Ask Bing, Yandex and other IndexNow engines to recrawl changed URLs |
 | `gscli sitemaps` | List, get, submit or delete sitemaps |
 | `gscli auth` | Credential status, or log in with gcloud |
 
@@ -76,6 +77,27 @@ gscli opportunities -d page --min-impressions 200
 gscli inspect --sitemap https://example.com/sitemap.xml -n 100
 gscli query -d page -n 20 --format jsonl | jq -r .page | gscli inspect --file -
 ```
+
+### Requesting a recrawl
+
+Google has no API for the "Request indexing" button. Its Indexing API only allows job posting and livestream
+pages, so gscli doesn't use it. Instead:
+
+- **Google:** `gscli inspect <url> --open` checks the URL and opens its URL Inspection page, one click from
+  "Request indexing". Resubmitting the sitemap (`gscli sitemaps submit`) after updating `lastmod` also helps.
+- **Bing, Yandex, Naver, Seznam, Yep:** [IndexNow](https://www.indexnow.org) is a real recrawl API. Bing's index
+  also feeds Copilot and other AI search products.
+
+```bash
+gscli indexnow key                                   # once: prints a key
+# serve https://example.com/<key>.txt containing only the key, then:
+export GSC_INDEXNOW_KEY=<key>
+gscli indexnow check https://example.com/
+gscli indexnow submit https://example.com/pricing https://example.com/blog/new-post
+```
+
+`submit` checks every host's key file before sending anything, and `--dry-run` shows what would be sent.
+Submit only URLs that changed.
 
 ### Filters
 

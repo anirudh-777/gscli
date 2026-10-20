@@ -1,6 +1,6 @@
 ---
 name: gscli
-description: Query Google Search Console with the gscli command — search performance (clicks, impressions, CTR, position) by query, page, country or device, period-over-period changes, ranking opportunities, URL indexing status and sitemaps. Use when the user asks about SEO performance, organic search traffic, rankings, keywords, why traffic dropped, whether a page is indexed, or anything in Google Search Console.
+description: Query Google Search Console with the gscli command — search performance (clicks, impressions, CTR, position) by query, page, country or device, period-over-period changes, ranking opportunities, URL indexing status and sitemaps — and ask search engines to recrawl pages (IndexNow for Bing and others, a one-click route to Google's Request indexing). Use when the user asks about SEO performance, organic search traffic, rankings, keywords, why traffic dropped, whether a page is indexed, getting a page recrawled or reindexed, or anything in Google Search Console.
 ---
 
 # gscli: Google Search Console
@@ -35,6 +35,8 @@ or set `GSC_SITE`.
 | Is this URL indexed? Why not? | `gscli inspect <url>` |
 | Indexing across the site | `gscli inspect --sitemap <sitemap-url> -n 100` |
 | Sitemap health | `gscli sitemaps list` |
+| Get Google to recrawl a page | `gscli inspect <url> --open`, then the user clicks "Request indexing" |
+| Get Bing and others to recrawl | `gscli indexnow submit <url...>` |
 
 Filters: `--filter 'query~/^how to/'`, `--filter page~/blog/`, `--filter country=ind`,
 `--filter device=mobile`. Repeat `--filter` to AND them. Run `gscli help filters` for the full syntax.
@@ -54,6 +56,10 @@ Dates: `--last 7d|4w|3m|16m` or `--start/--end YYYY-MM-DD`; the default is 28 da
 ## Limits and safety
 
 - URL inspection quota is 2,000 per property per day, so inspect samples rather than whole large sitemaps.
+- Google has no recrawl API. Don't use Google's Indexing API: it only allows job posting and livestream pages.
+  `inspect --open` opens browser tabs on the user's machine, so use it only when they want to request indexing.
+- `indexnow submit` notifies external search engines. Run it only when the user asks, for URLs that changed,
+  and preview with `--dry-run`. It needs `GSC_INDEXNOW_KEY` and a key file on the site (`gscli help indexnow`).
 - `sitemaps submit/delete` change the property. Run them only when the user asks, and `delete` needs `--yes`.
   They also need write access (`gscli auth login --write`).
 - Exit codes: 2 usage, 3 credentials, 4 no access/not found, 5 quota. The error JSON on stderr carries a `hint`.

@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { flatten, matchSite } from '../src/api.ts';
 import { compareRows, sortCompared } from '../src/commands/compare.ts';
-import { extractLocs, flattenInspection } from '../src/commands/inspect.ts';
+import { flattenInspection } from '../src/commands/inspect.ts';
+import { extractLocs } from '../src/urls.ts';
 import { expectedCtr, findOpportunities } from '../src/commands/opportunities.ts';
 import { sortRows } from '../src/commands/query.ts';
 
@@ -20,8 +21,14 @@ describe('matchSite', () => {
   });
 
   it('falls back to the domain property for URLs outside any prefix', () => {
-    assert.equal(matchSite('https://shop.example.com/', ['sc-domain:example.com']), undefined);
     assert.equal(matchSite('https://example.com/x', ['sc-domain:example.com']), 'sc-domain:example.com');
+  });
+
+  it('lets domain properties cover subdomains, most specific first', () => {
+    const domains = ['sc-domain:example.com', 'sc-domain:docs.example.com'];
+    assert.equal(matchSite('https://shop.example.com/', domains), 'sc-domain:example.com');
+    assert.equal(matchSite('https://docs.example.com/a', domains), 'sc-domain:docs.example.com');
+    assert.equal(matchSite('https://notexample.com/', domains), undefined);
   });
 
   it('matches a bare domain to a www URL-prefix property', () => {

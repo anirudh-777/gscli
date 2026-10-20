@@ -6,6 +6,7 @@ import { SearchConsoleClient, toCliError } from './client.ts';
 import { GLOBAL_HELP, GLOBAL_OPTIONS, str, type Command, type Context } from './command.ts';
 import { auth } from './commands/auth.ts';
 import { compare } from './commands/compare.ts';
+import { indexnow } from './commands/indexnow.ts';
 import { inspect } from './commands/inspect.ts';
 import { opportunities } from './commands/opportunities.ts';
 import { query } from './commands/query.ts';
@@ -17,7 +18,7 @@ import { CliError, ExitCode, usageError } from './errors.ts';
 import { FILTER_SYNTAX } from './filters.ts';
 import { defaultFormat, FORMATS, render, renderError, type Format } from './output.ts';
 
-const COMMANDS: Command[] = [sites, summary, query, compare, opportunities, inspect, sitemaps, auth];
+const COMMANDS: Command[] = [sites, summary, query, compare, opportunities, inspect, indexnow, sitemaps, auth];
 
 const VERSION = (JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as { version: string })
   .version;
@@ -143,6 +144,7 @@ async function main(argv: string[]): Promise<number> {
         return client;
       },
       site: (client) => resolveSite(client, str(values.site)),
+      siteRequested: Boolean(str(values.site) ?? process.env.GSC_SITE),
     };
 
     const result = await command.run(ctx, values, positionals);
