@@ -22,10 +22,10 @@ https://example.com/docs/editor             0       -1           86   -186      
 ## Install
 
 ```bash
-npm install -g gscli
+npm install -g gsc-agent-cli   # installs the `gscli` command
 ```
 
-Node 22 or newer. Or run it without installing: `npx gscli sites`.
+Node 22 or newer. Or run it without installing: `npx gsc-agent-cli sites`.
 
 ## Authenticate
 
@@ -143,7 +143,7 @@ npx skills add anirudh-777/gscli
 Or copy it by hand. The skill is also in the npm package:
 
 ```bash
-mkdir -p ~/.claude/skills && cp -r "$(npm root -g)/gscli/skills/gscli" ~/.claude/skills/
+mkdir -p ~/.claude/skills && cp -r "$(npm root -g)/gsc-agent-cli/skills/gscli" ~/.claude/skills/
 ```
 
 The skill tells the agent to treat everything gscli returns as data (search queries and sitemaps come from the
