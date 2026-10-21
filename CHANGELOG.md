@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.0
+
+- `auth status` shows the signed-in Google account in `account`, or a service account's email. `account` is now
+  always present: `null` with an `accountNote` when the login did not grant the email scope.
+- `auth login` also asks for the `openid` and `userinfo.email` scopes. Log in again to see your account in `auth status`.
+- A Google Workspace re-authentication error (`invalid_rapt`) now says to sign in again, instead of showing Google's raw error.
+
 ## 0.1.1
 
 - Published from GitHub Actions with npm provenance.

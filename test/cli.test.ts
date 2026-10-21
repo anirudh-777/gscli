@@ -4,6 +4,7 @@ import { describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { splitCommand } from '../src/argv.ts';
 import { toCliError } from '../src/client.ts';
+import { accountOf, loginCommand } from '../src/commands/auth.ts';
 import { formatCell, render } from '../src/output.ts';
 
 const CLI = fileURLToPath(new URL('../src/cli.ts', import.meta.url));
@@ -68,6 +69,29 @@ describe('toCliError', () => {
       toCliError({ response: { status: 400, data: { error: 'invalid_grant', error_description: 'Bad Request' } } }).code,
       'auth',
     );
+  });
+
+  it('tells the user to sign in again when Google Workspace requires it', () => {
+    const err = toCliError({
+      response: { status: 400, data: { error: 'invalid_grant', error_description: 'reauth related error (invalid_rapt)' } },
+    });
+    assert.equal(err.code, 'auth');
+    assert.match(err.hint ?? '', /signing in again periodically/);
+  });
+});
+
+describe('auth', () => {
+  it('asks for the email scope at login so status can show the account', () => {
+    const scopes = loginCommand(false).at(-1)!.replace('--scopes=', '').split(',');
+    assert.ok(scopes.includes('https://www.googleapis.com/auth/webmasters.readonly'));
+    assert.ok(scopes.includes('https://www.googleapis.com/auth/userinfo.email'));
+    assert.ok(loginCommand(true).at(-1)!.includes('https://www.googleapis.com/auth/webmasters,'));
+  });
+
+  it('takes the account from the token, then from a service account', () => {
+    assert.equal(accountOf({ email: 'me@example.com' }, { email: 'sa@p.iam.gserviceaccount.com' }), 'me@example.com');
+    assert.equal(accountOf({}, { email: 'sa@p.iam.gserviceaccount.com' }), 'sa@p.iam.gserviceaccount.com');
+    assert.equal(accountOf({}, {}), undefined);
   });
 });
 

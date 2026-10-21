@@ -87,7 +87,12 @@ export function toCliError(err: unknown): CliError {
   const message = googleMessage(err) ?? messageOf(err);
   const lower = message.toLowerCase();
 
-  if (lower.includes('invalid_grant') || lower.includes('invalid_rapt') || status === 401) {
+  if (lower.includes('invalid_rapt')) {
+    return new CliError('auth', `Google asks you to sign in again: ${message}`, {
+      hint: 'Your Google Workspace admin requires signing in again periodically. Run `gscli auth login`.',
+    });
+  }
+  if (lower.includes('invalid_grant') || status === 401) {
     return new CliError('auth', `Google rejected the credentials: ${message}`, { hint: LOGIN_HINT });
   }
   if (lower.includes('insufficient authentication scopes') || lower.includes('access_token_scope_insufficient')) {

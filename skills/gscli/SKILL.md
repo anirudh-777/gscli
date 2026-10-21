@@ -20,7 +20,7 @@ ask the user to install it (`npm install -g gsc-agent-cli`) rather than installi
 ## First call
 
 ```bash
-gscli auth status    # credentials, scopes, quota project, number of properties
+gscli auth status    # signed-in account, credentials, scopes, quota project, number of properties
 gscli sites          # properties and permission level
 ```
 

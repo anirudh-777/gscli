@@ -2,11 +2,13 @@ import { spawnSync } from 'node:child_process';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { listSites } from '../api.ts';
-import { READ_SCOPE, WRITE_SCOPE } from '../client.ts';
+import { READ_SCOPE, toCliError, WRITE_SCOPE } from '../client.ts';
 import type { Command } from '../command.ts';
 import { CliError, usageError } from '../errors.ts';
 
 const CLOUD_SCOPE = 'https://www.googleapis.com/auth/cloud-platform';
+// Lets `auth status` show which Google account is signed in.
+const EMAIL_SCOPES = ['openid', 'https://www.googleapis.com/auth/userinfo.email'];
 
 export function loginCommand(write: boolean): string[] {
   return [
@@ -14,7 +16,7 @@ export function loginCommand(write: boolean): string[] {
     'auth',
     'application-default',
     'login',
-    `--scopes=${[write ? WRITE_SCOPE : READ_SCOPE, CLOUD_SCOPE].join(',')}`,
+    `--scopes=${[write ? WRITE_SCOPE : READ_SCOPE, CLOUD_SCOPE, ...EMAIL_SCOPES].join(',')}`,
   ];
 }
 
@@ -54,20 +56,26 @@ GOOGLE_APPLICATION_CREDENTIALS, then gcloud application-default credentials.`,
     try {
       token = (await authClient.getAccessToken()).token;
     } catch (err) {
-      throw new CliError('auth', `Could not get an access token: ${err instanceof Error ? err.message : String(err)}`, {
+      const error = toCliError(err);
+      if (error.code === 'auth') throw error;
+      throw new CliError('auth', `Could not get an access token: ${error.message}`, {
         hint: 'Run `gscli auth login`, or pass --credentials <service-account.json>.',
       });
     }
     const info = token ? await tokenInfo(token) : {};
     const scopes = info.scope?.split(' ') ?? [];
     const sites = await listSites(client);
+    const account = accountOf(info, authClient);
 
     return {
       data: {
         credentials:
           client.credentialsFile ?? join(homedir(), '.config/gcloud/application_default_credentials.json'),
         credentialType: authClient.constructor.name,
-        account: info.email,
+        account: account ?? null,
+        accountNote: account
+          ? undefined
+          : 'The login did not include the email scope. Run `gscli auth login` again to show the account here.',
         scopes: scopes.length ? scopes : undefined,
         canRead: scopes.length ? scopes.includes(READ_SCOPE) || scopes.includes(WRITE_SCOPE) : undefined,
         canWrite: scopes.length ? scopes.includes(WRITE_SCOPE) : undefined,
@@ -77,6 +85,13 @@ GOOGLE_APPLICATION_CREDENTIALS, then gcloud application-default credentials.`,
     };
   },
 };
+
+/** The signed-in user from the token, or the service account's own email. */
+export function accountOf(info: { email?: string }, authClient: object): string | undefined {
+  if (info.email) return info.email;
+  const email = (authClient as { email?: unknown }).email;
+  return typeof email === 'string' && email ? email : undefined;
+}
 
 async function tokenInfo(token: string): Promise<{ email?: string; scope?: string }> {
   try {
