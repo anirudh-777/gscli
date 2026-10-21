@@ -12,8 +12,10 @@ before you interpret the numbers.
 
 ## Requirements
 
-The `gscli` command from the npm package `gsc-agent-cli`, on Node 22 or newer. If `gscli` is not
-found, ask the user to install it (`npm install -g gsc-agent-cli`) rather than installing it yourself.
+The `gscli` command, on Node 22 or newer. It is installed from the npm package `gsc-agent-cli`, built
+from the open-source repository https://github.com/anirudh-777/gscli. The package and command names
+differ because npm reserves names close to the existing `gs-cli` package. If `gscli` is not found,
+ask the user to install it (`npm install -g gsc-agent-cli`) rather than installing it yourself.
 
 ## First call
 

@@ -25,7 +25,8 @@ https://example.com/docs/editor             0       -1           86   -186      
 npm install -g gsc-agent-cli   # installs the `gscli` command
 ```
 
-Node 22 or newer. Or run it without installing: `npx gsc-agent-cli sites`.
+Node 22 or newer. Or run it without installing: `npx gsc-agent-cli sites`. The npm package is `gsc-agent-cli` because
+npm reserves names close to the existing `gs-cli`; the command is `gscli`.
 
 ## Authenticate
 
