@@ -3,14 +3,7 @@
 Google Search Console from the command line, built for AI agents and scripts.
 It covers Search Console's API (search analytics, URL inspection, sitemaps) plus recrawl requests through IndexNow.
 
-```bash
-$ gscli compare -d page --only down -n 3
-page                                   clicks  Δclicks  impressions  Δimpr  position  Δpos  status
--------------------------------------  ------  -------  -----------  -----  --------  ----  ------
-https://example.com/                       43      -21          521   -160       8.2  -5.0  down
-https://example.com/features/builder        0       -4           15    -50      13.8  +4.2  down
-https://example.com/docs/editor             0       -1           86   -186       5.2  -4.9  down
-```
+![gscli summary, compare, opportunities and inspect in a terminal, with sample data for example.com](https://raw.githubusercontent.com/anirudh-777/gscli/main/demo/demo.gif)
 
 - **Answers, not just API calls.** Besides raw queries there are `summary` (totals vs the previous period),
   `compare` (what gained, lost, appeared or disappeared) and `opportunities` (rankings close to the top with clicks to gain).
@@ -160,6 +153,9 @@ npm run typecheck
 node src/cli.ts ...  # run from source (Node 22.18+ strips types natively)
 npm run build        # compile to dist/
 ```
+
+The demo GIF is recorded with [vhs](https://github.com/charmbracelet/vhs): `npm run build && vhs demo/demo.tape`.
+`demo/mock.mjs` stands in for Google's API with sample data, so it needs no credentials.
 
 ## License
 
