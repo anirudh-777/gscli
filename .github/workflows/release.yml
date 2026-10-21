@@ -26,7 +26,14 @@ jobs:
       - run: npm run build
       # Trusted publishing (OIDC) needs npm 11.5.1 or newer; no token is stored.
       - run: npm install -g npm@11
-      - run: npm publish
+      - name: npm publish
+        # Skips a version that is already on npm, such as 0.1.0, which was published by hand.
+        run: |
+          if npm view "$(node -p 'require("./package.json").name')@${GITHUB_REF_NAME#v}" version >/dev/null 2>&1; then
+            echo "Already on npm; skipping publish."
+          else
+            npm publish
+          fi
       - name: GitHub release
         run: gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --notes "See CHANGELOG.md."
         env:
