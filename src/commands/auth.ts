@@ -22,7 +22,7 @@ export function loginCommand(write: boolean): string[] {
 
 const LOGIN_NOTES = [
   'On the consent screen, tick every checkbox; gcloud fails if the Google Cloud scope is left unticked.',
-  'Then set the project billed for API quota: gcloud auth application-default set-quota-project <project-id>',
+  'If `gscli auth status` shows no quotaProject, set the project billed for API quota: gcloud auth application-default set-quota-project <project-id>',
   'Enable the API in that project once: gcloud services enable searchconsole.googleapis.com --project <project-id>',
   'Alternative: a service account key (--credentials key.json), with the service account added as a user in Search Console.',
 ];
