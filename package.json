@@ -1,6 +1,6 @@
 {
   "name": "gsc-agent-cli",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Google Search Console from the command line, built for AI agents and scripts",
   "license": "MIT",
   "author": "Anirudh Prakash",

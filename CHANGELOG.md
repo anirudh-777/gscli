@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.1
+
+- Published from GitHub Actions with npm provenance.
+- The skill and README explain that the npm package `gsc-agent-cli` installs the `gscli` command, and link the source repository.
+
 ## 0.1.0
 
 First public release.
