@@ -14,6 +14,8 @@ export interface ClientOptions {
   credentials?: string;
   quotaProject?: string;
   write?: boolean;
+  /** Base delay before retrying a 429 or 5xx response; it doubles on each attempt. */
+  retryDelayMs?: number;
 }
 
 interface RequestOptions {
@@ -27,12 +29,14 @@ export class SearchConsoleClient {
   readonly auth: GoogleAuth;
   readonly credentialsFile: string | undefined;
   private readonly quotaProject: string | undefined;
+  private readonly retryDelayMs: number;
   private client: Promise<AuthClient> | undefined;
 
   constructor(options: ClientOptions = {}) {
     this.credentialsFile =
       options.credentials ?? process.env.GSC_CREDENTIALS ?? process.env.GOOGLE_APPLICATION_CREDENTIALS;
     this.quotaProject = options.quotaProject ?? process.env.GSC_QUOTA_PROJECT;
+    this.retryDelayMs = options.retryDelayMs ?? 500;
     this.auth = new GoogleAuth({
       keyFile: this.credentialsFile,
       scopes: options.write ? [WRITE_SCOPE] : [READ_SCOPE],
@@ -68,7 +72,7 @@ export class SearchConsoleClient {
         const status = statusOf(err);
         const retryable = status === 429 || (status !== undefined && status >= 500);
         if (retryable && attempt < MAX_ATTEMPTS) {
-          await sleep(2 ** attempt * 500 + Math.random() * 250);
+          await sleep(2 ** attempt * this.retryDelayMs * (1 + Math.random() / 2));
           continue;
         }
         throw toCliError(err);

@@ -3,7 +3,7 @@ import { describe, it } from 'node:test';
 import { flatten, matchSite } from '../src/api.ts';
 import { compareRows, sortCompared } from '../src/commands/compare.ts';
 import { flattenInspection } from '../src/commands/inspect.ts';
-import { extractLocs } from '../src/urls.ts';
+import { extractLocs, isHttpsUrl } from '../src/urls.ts';
 import { expectedCtr, findOpportunities } from '../src/commands/opportunities.ts';
 import { sortRows } from '../src/commands/query.ts';
 
@@ -137,5 +137,15 @@ describe('inspection helpers', () => {
     const xml = `<urlset><url><loc>https://a.com/?a=1&amp;b=2</loc></url>
       <url><loc><![CDATA[ https://a.com/x ]]></loc></url></urlset>`;
     assert.deepEqual(extractLocs(xml), ['https://a.com/?a=1&b=2', 'https://a.com/x']);
+  });
+});
+
+describe('isHttpsUrl', () => {
+  it('accepts only https URLs, so --open never hands anything else to the browser opener', () => {
+    assert.equal(isHttpsUrl('https://search.google.com/search-console/inspect?resource_id=x&id=y'), true);
+    assert.equal(isHttpsUrl('http://example.com'), false);
+    assert.equal(isHttpsUrl('file:///etc/passwd'), false);
+    assert.equal(isHttpsUrl('javascript:alert(1)'), false);
+    assert.equal(isHttpsUrl('not a url'), false);
   });
 });

@@ -4,6 +4,14 @@
   "description": "Google Search Console from the command line, built for AI agents and scripts",
   "license": "MIT",
   "author": "Anirudh Prakash",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/anirudh-777/gscli.git"
+  },
+  "homepage": "https://github.com/anirudh-777/gscli#readme",
+  "bugs": {
+    "url": "https://github.com/anirudh-777/gscli/issues"
+  },
   "type": "module",
   "bin": {
     "gscli": "dist/cli.js"
@@ -12,10 +20,11 @@
     "dist",
     "skills",
     "README.md",
+    "CHANGELOG.md",
     "LICENSE"
   ],
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
@@ -33,12 +42,15 @@
     "claude",
     "llm"
   ],
-  "private": true,
   "dependencies": {
     "google-auth-library": "^10.9.1"
   },
   "devDependencies": {
     "@types/node": "^22.20.5",
     "typescript": "~5.9"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
   }
 }

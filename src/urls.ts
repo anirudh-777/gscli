@@ -64,6 +64,9 @@ export function extractLocs(xml: string): string[] {
   );
 }
 
+/** The sitemap protocol caps a sitemap at 50 MB uncompressed. */
+const MAX_SITEMAP_BYTES = 50 * 1024 * 1024;
+
 async function fetchText(url: string): Promise<string> {
   let res: Response;
   try {
@@ -72,11 +75,20 @@ async function fetchText(url: string): Promise<string> {
     throw new CliError('error', `Could not fetch sitemap ${url}: ${err instanceof Error ? err.message : String(err)}`);
   }
   if (!res.ok) throw new CliError('error', `Fetching sitemap ${url} returned HTTP ${res.status}.`);
-  if (url.endsWith('.gz')) {
-    const stream = res.body!.pipeThrough(new DecompressionStream('gzip'));
-    return new Response(stream).text();
+  if (!res.body) return '';
+  const body = url.endsWith('.gz') ? res.body.pipeThrough(new DecompressionStream('gzip')) : res.body;
+  return readCapped(body, MAX_SITEMAP_BYTES, url);
+}
+
+async function readCapped(stream: ReadableStream<Uint8Array>, maxBytes: number, url: string): Promise<string> {
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  for await (const chunk of stream) {
+    size += chunk.byteLength;
+    if (size > maxBytes) throw new CliError('error', `Sitemap ${url} is larger than 50 MB, the sitemap protocol's limit.`);
+    chunks.push(chunk);
   }
-  return res.text();
+  return Buffer.concat(chunks).toString('utf8');
 }
 
 async function readStdin(): Promise<string> {
@@ -108,13 +120,17 @@ export function normalizeUrl(url: string): string {
   }
 }
 
-/** Opens a URL in the default browser. Resolves false when no opener is available. */
+/**
+ * Opens an https URL in the default browser. Resolves false for any other URL, or when no opener
+ * is available. The URL goes to the opener as an argument, never through a shell.
+ */
 export function openInBrowser(url: string): Promise<boolean> {
+  if (!isHttpsUrl(url)) return Promise.resolve(false);
   const [command, args] =
     process.platform === 'darwin'
       ? ['open', [url]]
       : process.platform === 'win32'
-        ? ['cmd', ['/c', 'start', '""', url.replace(/&/g, '^&')]]
+        ? ['rundll32', ['url.dll,FileProtocolHandler', url]]
         : ['xdg-open', [url]];
   return new Promise((resolve) => {
     const child = spawn(command, args as string[], { stdio: 'ignore', detached: true });
@@ -124,4 +140,12 @@ export function openInBrowser(url: string): Promise<boolean> {
       resolve(true);
     });
   });
+}
+
+export function isHttpsUrl(url: string): boolean {
+  try {
+    return new URL(url).protocol === 'https:';
+  } catch {
+    return false;
+  }
 }

@@ -1,6 +1,7 @@
 # gscli
 
 Google Search Console from the command line, built for AI agents and scripts.
+It covers Search Console's API (search analytics, URL inspection, sitemaps) plus recrawl requests through IndexNow.
 
 ```bash
 $ gscli compare -d page --only down -n 3
@@ -21,10 +22,10 @@ https://example.com/docs/editor             0       -1           86   -186      
 ## Install
 
 ```bash
-npm install -g gscli    # not published yet; for now: git clone, npm install, npm run build, npm link
+npm install -g gscli
 ```
 
-Node 20 or newer.
+Node 22 or newer. Or run it without installing: `npx gscli sites`.
 
 ## Authenticate
 
@@ -124,18 +125,30 @@ By default a range ends on the latest day that has data, because Google publishe
 | JSON shape | `{...meta, "rows": [...]}` for row commands. Metrics are raw numbers; `ctr` is a 0–1 fraction |
 | Errors | stderr. In JSON mode: `{"error": {"code", "exitCode", "message", "hint"}}` |
 
+JSON field names and exit codes are the interface for scripts and agents. While gscli is 0.x, a change to them
+bumps the minor version and is listed in the [changelog](CHANGELOG.md).
+
 Exit codes: `0` success, `1` unexpected error, `2` usage error, `3` credentials missing, rejected or lacking a scope,
 `4` no access to the property or resource, `5` quota exceeded.
 
 ## Using it with an AI agent
 
 Agents can run `gscli` from the shell, with no MCP server to configure. To teach an agent when and how to use it,
-install the skill:
+install the skill with the [skills](https://skills.sh) CLI, which supports Claude Code, Codex, Cursor and other agents:
 
 ```bash
-# Claude Code
-mkdir -p ~/.claude/skills && cp -r skills/gscli ~/.claude/skills/
+npx skills add anirudh-777/gscli
 ```
+
+Or copy it by hand. The skill is also in the npm package:
+
+```bash
+mkdir -p ~/.claude/skills && cp -r "$(npm root -g)/gscli/skills/gscli" ~/.claude/skills/
+```
+
+The skill tells the agent to treat everything gscli returns as data (search queries and sitemaps come from the
+public web) and to run the commands that change things (`indexnow submit`, `sitemaps submit/delete`,
+`inspect --open`) only when you ask.
 
 ## Development
 
