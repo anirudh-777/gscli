@@ -11,7 +11,7 @@ const MAX_CONCURRENCY = 10;
 /** --open launches one browser tab per URL; more than this is a mistake, not a workflow. */
 const MAX_OPEN = 10;
 
-interface InspectionResult {
+export interface InspectionResult {
   inspectionResultLink?: string;
   indexStatusResult?: {
     verdict?: string;
@@ -150,17 +150,27 @@ async function inspectOne(
   raw: boolean,
 ): Promise<Row> {
   try {
-    const res = await client.searchConsole<{ inspectionResult?: InspectionResult }>('/urlInspection/index:inspect', {
-      method: 'POST',
-      body: { inspectionUrl: url, siteUrl, languageCode },
-    });
-    const result = res.inspectionResult ?? {};
+    const result = await inspectUrl(client, siteUrl, url, languageCode);
     return raw ? { url, link: result.inspectionResultLink, ...result } : flattenInspection(url, result);
   } catch (err) {
     // Credential and quota problems affect every URL, so stop instead of reporting each one.
     if (err instanceof CliError && (err.code === 'auth' || err.code === 'quota')) throw err;
     return { url, error: err instanceof Error ? err.message : String(err) };
   }
+}
+
+/** Google's indexed view of one URL in a property (the URL Inspection API, not a live test). */
+export async function inspectUrl(
+  client: SearchConsoleClient,
+  siteUrl: string,
+  url: string,
+  languageCode = 'en-US',
+): Promise<InspectionResult> {
+  const res = await client.searchConsole<{ inspectionResult?: InspectionResult }>('/urlInspection/index:inspect', {
+    method: 'POST',
+    body: { inspectionUrl: url, siteUrl, languageCode },
+  });
+  return res.inspectionResult ?? {};
 }
 
 export function flattenInspection(url: string, result: InspectionResult): Row {

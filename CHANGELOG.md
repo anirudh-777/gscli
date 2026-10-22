@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.0
+
+- Usable as a library: `import { SearchConsoleClient, searchAnalytics, totals, inspectUrl } from 'gsc-agent-cli'`.
+  Exports the client, Search Analytics paging, period totals, comparisons, opportunities, URL inspection and
+  sitemap helpers, with TypeScript types.
+- README demo GIF.
+
 ## 0.2.0
 
 - `auth status` shows the signed-in Google account in `account`, or a service account's email. `account` is now

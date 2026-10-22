@@ -69,9 +69,10 @@ Examples:
   },
 };
 
-type Totals = Record<Metric, number>;
+export type Totals = Record<Metric, number>;
 
-async function totals(client: SearchConsoleClient, site: string, query: AnalyticsQuery & DateRange): Promise<Totals> {
+/** Clicks, impressions, CTR and position for a range, including anonymized queries. */
+export async function totals(client: SearchConsoleClient, site: string, query: AnalyticsQuery & DateRange): Promise<Totals> {
   const [row] = await searchAnalytics(client, site, query);
   return row ?? { clicks: 0, impressions: 0, ctr: 0, position: 0 };
 }

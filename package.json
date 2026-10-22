@@ -1,6 +1,6 @@
 {
   "name": "gsc-agent-cli",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Google Search Console from the command line, built for AI agents and scripts",
   "license": "MIT",
   "author": "Anirudh Prakash",
@@ -13,6 +13,14 @@
     "url": "https://github.com/anirudh-777/gscli/issues"
   },
   "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "types": "./dist/index.d.ts",
   "bin": {
     "gscli": "dist/cli.js"
   },

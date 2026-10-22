@@ -144,6 +144,21 @@ The skill tells the agent to treat everything gscli returns as data (search quer
 public web) and to run the commands that change things (`indexnow submit`, `sitemaps submit/delete`,
 `inspect --open`) only when you ask.
 
+## Use as a library
+
+The same client and analysis are importable, with TypeScript types:
+
+```ts
+import { SearchConsoleClient, resolveSite, totals, inspectUrl } from 'gsc-agent-cli';
+
+const client = new SearchConsoleClient();               // same credential lookup as the CLI
+const site = await resolveSite(client, 'example.com');
+const last28 = await totals(client, site, { startDate: '2026-09-01', endDate: '2026-09-28', dimensions: [], limit: 1 });
+const page = await inspectUrl(client, site, 'https://example.com/pricing');
+```
+
+Exports follow the same versioning rule as the JSON output: breaking changes bump the minor version while gscli is 0.x.
+
 ## Development
 
 ```bash
