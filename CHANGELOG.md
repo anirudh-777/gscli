@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.0
+
+- `gscli bing`: Bing Webmaster Tools with an API key (`GSC_BING_API_KEY`). Subcommands `sites`, `traffic`, `queries`,
+  `pages`, `crawl`, `url`, `sitemaps list/submit/delete`, `submit` (URL Submission API, quota-checked) and `quota`.
+  `--site` matches Bing sites from Search Console forms, falling back to the URL's site for `url` and `submit`,
+  then `GSC_BING_SITE`, then `GSC_SITE`.
+- Library: `BingClient`, `resolveBingSite`, `matchBingSite`, `aggregateStats` and `parseBingDate`.
+
 ## 0.3.0
 
 - Usable as a library: `import { SearchConsoleClient, searchAnalytics, totals, inspectUrl } from 'gsc-agent-cli'`.

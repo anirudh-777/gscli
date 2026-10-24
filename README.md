@@ -1,7 +1,8 @@
 # gscli
 
 Google Search Console from the command line, built for AI agents and scripts.
-It covers Search Console's API (search analytics, URL inspection, sitemaps) plus recrawl requests through IndexNow.
+It covers Search Console's API (search analytics, URL inspection, sitemaps), Bing Webmaster Tools, and recrawl
+requests through IndexNow.
 
 ![gscli summary, compare, opportunities and inspect in a terminal, with sample data for example.com](https://raw.githubusercontent.com/anirudh-777/gscli/main/demo/demo.gif)
 
@@ -57,6 +58,7 @@ then gcloud's application-default credentials.
 | `gscli inspect` | URL Inspection: indexed or not, why, canonical, last crawl. `--open` jumps to "Request indexing" |
 | `gscli indexnow` | Ask Bing, Yandex and other IndexNow engines to recrawl changed URLs |
 | `gscli sitemaps` | List, get, submit or delete sitemaps |
+| `gscli bing` | Bing Webmaster Tools: traffic, queries, pages, crawl stats, URL info, sitemaps, URL submission |
 | `gscli auth` | Credential status, or log in with gcloud |
 
 `gscli help <command>` shows every option, with examples.
@@ -93,6 +95,26 @@ gscli indexnow submit https://example.com/pricing https://example.com/blog/new-p
 
 `submit` checks every host's key file before sending anything, and `--dry-run` shows what would be sent.
 Submit only URLs that changed.
+
+### Bing Webmaster Tools
+
+`gscli bing` reads Bing Webmaster Tools with an API key, which covers every site verified on the account.
+Create it in Bing Webmaster Tools under **Settings > API Access**.
+
+```bash
+export GSC_BING_API_KEY=<key>
+gscli bing sites
+gscli bing traffic --site example.com --last 3m      # daily clicks and impressions, with totals
+gscli bing queries -n 20 --sort impressions          # also: bing pages
+gscli bing crawl --last 4w                           # pages crawled, crawl errors, pages in index
+gscli bing url https://example.com/pricing           # HTTP status, discovery and last crawl dates
+gscli bing sitemaps list                             # also: sitemaps submit/delete <url>
+gscli bing submit https://example.com/pricing        # URL Submission API; checks `bing quota` first
+```
+
+`--site` takes the same forms as Search Console (`example.com`, a URL, `sc-domain:example.com`) and falls back to
+the site of the URL for `bing url` and `bing submit`, then `GSC_BING_SITE`, then `GSC_SITE`. Query and page stats come from Bing in dated periods; `--last` and `--start/--end`
+keep the periods dated inside the range.
 
 ### Filters
 
@@ -142,7 +164,7 @@ mkdir -p ~/.claude/skills && cp -r "$(npm root -g)/gsc-agent-cli/skills/gscli" ~
 
 The skill tells the agent to treat everything gscli returns as data (search queries and sitemaps come from the
 public web) and to run the commands that change things (`indexnow submit`, `sitemaps submit/delete`,
-`inspect --open`) only when you ask.
+`bing submit`, `bing sitemaps submit/delete`, `inspect --open`) only when you ask.
 
 ## Use as a library
 

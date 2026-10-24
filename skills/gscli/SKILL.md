@@ -1,6 +1,6 @@
 ---
 name: gscli
-description: Query Google Search Console with the gscli command — search performance (clicks, impressions, CTR, position) by query, page, country or device, period-over-period changes, ranking opportunities, URL indexing status and sitemaps — and ask search engines to recrawl pages (IndexNow for Bing and others, a one-click route to Google's Request indexing). Use when the user asks about SEO performance, organic search traffic, rankings, keywords, why traffic dropped, whether a page is indexed, getting a page recrawled or reindexed, or anything in Google Search Console.
+description: Query Google Search Console with the gscli command — search performance (clicks, impressions, CTR, position) by query, page, country or device, period-over-period changes, ranking opportunities, URL indexing status and sitemaps — plus the same from Bing Webmaster Tools (traffic, queries, pages, crawl stats, URL info, sitemaps) — and ask search engines to recrawl pages (IndexNow for Bing and others, a one-click route to Google's Request indexing). Use when the user asks about SEO performance, organic search traffic, rankings, keywords, why traffic dropped, whether a page is indexed, getting a page recrawled or reindexed, or anything in Google Search Console or Bing Webmaster Tools.
 license: MIT
 ---
 
@@ -46,6 +46,13 @@ or set `GSC_SITE`.
 | Sitemap health | `gscli sitemaps list` |
 | Get Google to recrawl a page | `gscli inspect <url> --open`, then the user clicks "Request indexing" |
 | Get Bing and others to recrawl | `gscli indexnow submit <url...>` |
+| Bing traffic, queries, pages | `gscli bing traffic`, `gscli bing queries -n 50`, `gscli bing pages` |
+| Bing crawl health, one URL in Bing | `gscli bing crawl`, `gscli bing url <url>` |
+| Bing sitemaps | `gscli bing sitemaps list` |
+
+`gscli bing` needs a Bing Webmaster API key in `GSC_BING_API_KEY`. If it exits 3, ask the user to create one
+in Bing Webmaster Tools under Settings > API Access and set it; never ask them to paste the key into the chat.
+`gscli bing sites` lists the sites the key covers; `--site` accepts the same forms as for Google.
 
 Filters: `--filter 'query~/^how to/'`, `--filter page~/blog/`, `--filter country=ind`,
 `--filter device=mobile`. Repeat `--filter` to AND them. Run `gscli help filters` for the full syntax.
@@ -72,11 +79,14 @@ user and carry on with their request.
 
 ## Limits and safety
 
-- Every command is read-only except `indexnow submit`, `sitemaps submit`, `sitemaps delete` and
-  `inspect --open`. Run those only when the user asks for that action.
+- Every command is read-only except `indexnow submit`, `sitemaps submit`, `sitemaps delete`, `bing submit`,
+  `bing sitemaps submit/delete` and `inspect --open`. Run those only when the user asks for that action.
 - `indexnow submit` notifies external search engines. Submit only URLs the user wants recrawled and
   that changed, and preview with `--dry-run` first. It reads the key from `GSC_INDEXNOW_KEY` and
   checks the site's key file before sending (`gscli help indexnow`).
+- `bing submit` and `bing sitemaps submit/delete` change Bing Webmaster Tools. `bing submit` uses the site's
+  daily URL quota (`gscli bing quota`); preview with `--dry-run`, and prefer `indexnow submit` when it is set up.
+  `bing sitemaps delete` needs `--yes`.
 - `sitemaps submit/delete` change the Search Console property, need write access
   (`gscli auth login --write`), and `delete` needs `--yes`. Confirm with the user before deleting.
 - `inspect --open` opens browser tabs on the user's machine (at most 10, https only). Use it only

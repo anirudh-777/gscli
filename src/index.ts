@@ -25,3 +25,16 @@ export { compareRows, sortCompared, type ComparedRow } from './commands/compare.
 export { findOpportunities, expectedCtr, type Opportunity, type OpportunityOptions } from './commands/opportunities.ts';
 export { inspectUrl, flattenInspection, type InspectionResult } from './commands/inspect.ts';
 export { sitemapUrls, extractLocs, normalizeUrl } from './urls.ts';
+export {
+  BingClient,
+  BING_API,
+  listBingSites,
+  resolveBingSite,
+  matchBingSite,
+  aggregateStats,
+  parseBingDate,
+  type BingClientOptions,
+  type BingSite,
+  type BingStatsRow,
+  type BingAggregate,
+} from './bing.ts';
